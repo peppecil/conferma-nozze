@@ -84,7 +84,7 @@
         return;
       }
 
-      fetch(`${scriptURL}?nome=${encodeURIComponent(nome)}&cognome=${encodeURIComponent(cognome)}`)
+      fetch(${scriptURL}?nome=${encodeURIComponent(nome)}&cognome=${encodeURIComponent(cognome)})
         .then(r => r.json())
         .then(data => {
           if (data.trovato) {
@@ -96,7 +96,7 @@
             ul.innerHTML = "";
             gruppoCorrente.forEach(p => {
               const li = document.createElement("li");
-              li.textContent = `${p.nome} ${p.cognome}`;
+              li.textContent = ${p.nome} ${p.cognome};
               ul.appendChild(li);
             });
           } else {
