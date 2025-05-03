@@ -1,104 +1,151 @@
-html_content = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <title>Conferma Nozze</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    .hidden { display: none; }
-    .persona { margin-bottom: 15px; border-bottom: 1px solid #ccc; padding: 10px 0; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modulo di Conferma Nozze</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        label {
+            margin: 10px 0;
+            display: block;
+        }
+        input, select {
+            padding: 10px;
+            margin: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .confirmation {
+            margin-top: 20px;
+        }
+        .error {
+            color: red;
+        }
+    </style>
 </head>
 <body>
-  <h2>Conferma Partecipazione</h2>
-  <p>Inserisci il tuo Nome e Cognome:</p>
-  <input id="nome" placeholder="Nome"> <input id="cognome" placeholder="Cognome">
-  <button onclick="cercaGruppo()">Cerca</button>
-
-  <div id="gruppoArea" class="hidden">
-    <h3>Gruppo trovato:</h3>
-    <form id="moduloGruppo"></form>
-    <button onclick="inviaConferma()">Invia Conferma</button>
-  </div>
-
-  <p id="messaggio"></p>
-
-  <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbx2su4XdNQl--nlUTpuawXba-lzK8IgO9c5fOZxcPJ_EPaYdjws1Qf4YLAOkRybP9SA/exec"; // <-- Sostituisci con il tuo URL
+    <h1>Modulo di Conferma Nozze</h1>
     
-    let gruppoID = "";
-    let membri = [];
+    <label for="nome">Nome:</label>
+    <input type="text" id="nome" placeholder="Inserisci il nome" required>
 
-    function cercaGruppo() {
-      const nome = document.getElementById("nome").value;
-      const cognome = document.getElementById("cognome").value;
-      fetch(`${scriptURL}?nome=${nome}&cognome=${cognome}`)
-        .then(res => res.json())
-        .then(data => {
-          if (!data.trovato) {
-            document.getElementById("messaggio").innerText = "Nome non trovato.";
-            return;
-          }
-          if (data.confermato) {
-            document.getElementById("messaggio").innerText = "Modulo già inviato per questo gruppo.";
-            return;
-          }
+    <label for="cognome">Cognome:</label>
+    <input type="text" id="cognome" placeholder="Inserisci il cognome" required>
 
-          membri = data.gruppo;
-          gruppoID = membri[0].gruppoID;
-          const form = document.getElementById("moduloGruppo");
-          form.innerHTML = "";
+    <button onclick="cercaGruppo()">Verifica Partecipazione</button>
 
-          membri.forEach((persona, index) => {
-            form.innerHTML += `
-              <div class="persona">
-                <strong>${persona.nome} ${persona.cognome}</strong><br>
-                Partecipa? 
-                <select id="partecipa${index}" onchange="togglePreferenze(${index})">
-                  <option value="sì">Sì</option>
-                  <option value="no">No</option>
-                </select><br>
-                <div id="preferenze${index}">
-                  Preferenze o intolleranze: <input id="note${index}" placeholder="Es. senza glutine">
-                </div>
-              </div>
-            `;
-          });
-          document.getElementById("gruppoArea").classList.remove("hidden");
-          document.getElementById("messaggio").innerText = "";
-        });
-    }
+    <div class="confirmation" id="confirmationSection" style="display: none;">
+        <h2>Gruppo di invitati:</h2>
+        <ul id="groupList"></ul>
+        <label for="partecipazione">Parteciperai? (Seleziona sì o no):</label>
+        <select id="partecipazione">
+            <option value="no">No</option>
+            <option value="si">Sì</option>
+        </select>
 
-    function togglePreferenze(index) {
-      const val = document.getElementById(`partecipa${index}`).value;
-      document.getElementById(`preferenze${index}`).style.display = val === "sì" ? "block" : "none";
-    }
+        <label for="preferenze">Preferenze alimentari o intolleranze (se hai risposto sì):</label>
+        <input type="text" id="preferenze" placeholder="Scrivi le tue preferenze...">
 
-    function inviaConferma() {
-      const conferme = membri.map((persona, index) => ({
-        nome: persona.nome,
-        cognome: persona.cognome,
-        partecipa: document.getElementById(`partecipa${index}`).value === "sì",
-        preferenze: document.getElementById(`note${index}`).value
-      }));
+        <button onclick="invioConferma()">Invia Conferma</button>
+    </div>
 
-      fetch(scriptURL, {
-        method: "POST",
-        body: JSON.stringify({
-          gruppoID: conferme[0].gruppoID,
-          conferme
-        }),
-        headers: {
-          "Content-Type": "application/json"
+    <div id="error" class="error" style="display: none;">Errore: Partecipante non trovato!</div>
+
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbx2su4XdNQl--nlUTpuawXba-lzK8IgO9c5fOZxcPJ_EPaYdjws1Qf4YLAOkRybP9SA/exec';
+
+        function cercaGruppo() {
+            const nome = document.getElementById("nome").value.trim();
+            const cognome = document.getElementById("cognome").value.trim();
+
+            if (!nome || !cognome) {
+                alert("Inserisci nome e cognome!");
+                return;
+            }
+
+            fetch(scriptURL + `?nome=${nome}&cognome=${cognome}`, {
+                method: 'GET',
+                mode: 'no-cors', // Usato per bypassare CORS (se non risolvi, usa il passo successivo)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Partecipante non trovato');
+                }
+            })
+            .then(data => {
+                if (data.trovato) {
+                    document.getElementById("error").style.display = 'none';
+                    document.getElementById("confirmationSection").style.display = 'block';
+                    populateGroup(data.gruppo);
+                } else {
+                    document.getElementById("error").style.display = 'block';
+                }
+            })
+            .catch(error => {
+                alert(error.message);
+            });
         }
-      }).then(res => res.json())
-        .then(data => {
-          document.getElementById("messaggio").innerText = data.messaggio;
-          if (data.successo) {
-            document.getElementById("gruppoArea").classList.add("hidden");
-          }
-        });
-    }
-  </script>
+
+        function populateGroup(gruppo) {
+            const groupList = document.getElementById("groupList");
+            groupList.innerHTML = ''; // Pulisce la lista
+
+            gruppo.forEach(member => {
+                const li = document.createElement('li');
+                li.textContent = `${member.nome} ${member.cognome}`;
+                groupList.appendChild(li);
+            });
+        }
+
+        function invioConferma() {
+            const nome = document.getElementById("nome").value.trim();
+            const cognome = document.getElementById("cognome").value.trim();
+            const partecipazione = document.getElementById("partecipazione").value;
+            const preferenze = document.getElementById("preferenze").value.trim();
+
+            fetch(scriptURL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    nome: nome,
+                    cognome: cognome,
+                    partecipazione: partecipazione,
+                    preferenze: preferenze
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                mode: 'no-cors' // Usato per bypassare CORS
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.successo) {
+                    alert(data.messaggio);
+                } else {
+                    alert(data.messaggio);
+                }
+            })
+            .catch(error => alert('Errore nell\'invio della conferma'));
+        }
+    </script>
 </body>
 </html>
