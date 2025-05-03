@@ -1,143 +1,72 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Conferma Partecipazione Nozze</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f9;
-      padding: 20px;
-    }
-    h1, h2 {
-      color: #333;
-    }
-    label {
-      margin-top: 10px;
-      display: block;
-    }
-    input, select {
-      padding: 10px;
-      margin-top: 5px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    button {
-      padding: 10px 20px;
-      margin-top: 15px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .error {
-      color: red;
-      margin-top: 10px;
-    }
-  </style>
-</head>
-<body>
+<script>
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbyU-Ml09HrUHH7VYnEjyvAXt-kTvwa8_SXGkTgSN0i3WfPwvuTHDyxjyLSTlrP0Trb_/exec';
 
-  <h1>Conferma Partecipazione</h1>
+  let gruppoCorrente = [];
 
-  <label for="nome">Nome:</label>
-  <input type="text" id="nome" placeholder="Inserisci il nome">
+  // Funzione di verifica
+  function verifica() {
+    const nome = document.getElementById('nome').value.trim();
+    const cognome = document.getElementById('cognome').value.trim();
 
-  <label for="cognome">Cognome:</label>
-  <input type="text" id="cognome" placeholder="Inserisci il cognome">
-
-  <button onclick="verifica()">Verifica Partecipazione</button>
-
-  <div id="gruppoSezione" style="display:none;">
-    <h2>Gruppo Invitati</h2>
-    <ul id="listaGruppo"></ul>
-
-    <label for="partecipa">Parteciperai?</label>
-    <select id="partecipa">
-      <option value="si">Sì</option>
-      <option value="no">No</option>
-    </select>
-
-    <label for="preferenze">Preferenze alimentari / intolleranze:</label>
-    <input type="text" id="preferenze" placeholder="Scrivi le tue preferenze...">
-
-    <button onclick="invia()">Invia Conferma</button>
-  </div>
-
-  <div id="errore" class="error" style="display:none;">Partecipante non trovato!</div>
-
-  <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbyU-Ml09HrUHH7VYnEjyvAXt-kTvwa8_SXGkTgSN0i3WfPwvuTHDyxjyLSTlrP0Trb_/exec';
-
-    let gruppoCorrente = [];
-
-    function verifica() {
-      const nome = document.getElementById('nome').value.trim();
-      const cognome = document.getElementById('cognome').value.trim();
-
-      if (!nome || !cognome) {
-        alert("Inserisci nome e cognome.");
-        return;
-      }
-
-      fetch(${scriptURL}?nome=${encodeURIComponent(nome)}&cognome=${encodeURIComponent(cognome)})
-        .then(r => r.json())
-        .then(data => {
-          if (data.trovato) {
-            gruppoCorrente = data.gruppo;
-            document.getElementById("errore").style.display = "none";
-            document.getElementById("gruppoSezione").style.display = "block";
-
-            const ul = document.getElementById("listaGruppo");
-            ul.innerHTML = "";
-            gruppoCorrente.forEach(p => {
-              const li = document.createElement("li");
-              li.textContent = ${p.nome} ${p.cognome};
-              ul.appendChild(li);
-            });
-          } else {
-            document.getElementById("errore").style.display = "block";
-            document.getElementById("gruppoSezione").style.display = "none";
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          alert("Errore di connessione al server.");
-        });
+    if (!nome || !cognome) {
+      alert("Inserisci nome e cognome.");
+      return;
     }
 
-    function invia() {
-      const partecipazione = document.getElementById("partecipa").value;
-      const preferenze = document.getElementById("preferenze").value.trim();
+    // Chiamata fetch per ottenere i dati dal server
+    fetch(`${scriptURL}?nome=${encodeURIComponent(nome)}&cognome=${encodeURIComponent(cognome)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.trovato) {
+          gruppoCorrente = data.gruppo;
+          document.getElementById("errore").style.display = "none";
+          document.getElementById("gruppoSezione").style.display = "block";
 
-      const conferme = gruppoCorrente.map(p => ({
-        nome: p.nome,
-        cognome: p.cognome,
-        partecipa: partecipazione === "si",
-        preferenze: preferenze
-      }));
-
-      fetch(scriptURL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ conferme: conferme })
+          const ul = document.getElementById("listaGruppo");
+          ul.innerHTML = "";
+          gruppoCorrente.forEach(p => {
+            const li = document.createElement("li");
+            li.textContent = `${p.nome} ${p.cognome}`;
+            ul.appendChild(li);
+          });
+        } else {
+          document.getElementById("errore").style.display = "block";
+          document.getElementById("gruppoSezione").style.display = "none";
+        }
       })
-        .then(r => r.json())
-        .then(data => {
-          alert(data.messaggio);
-        })
-        .catch(err => {
-          console.error(err);
-          alert("Errore nell'invio dei dati.");
-        });
-    }
-  </script>
+      .catch(err => {
+        console.error(err);
+        alert("Errore di connessione al server.");
+      });
+  }
 
-</body>
-</html>
+  // Funzione di invio conferma
+  function invia() {
+    const partecipazione = document.getElementById("partecipa").value;
+    const preferenze = document.getElementById("preferenze").value.trim();
+
+    const conferme = gruppoCorrente.map(p => ({
+      nome: p.nome,
+      cognome: p.cognome,
+      partecipa: partecipazione === "si",
+      preferenze: preferenze
+    }));
+
+    // Chiamata per inviare i dati al server
+    fetch(scriptURL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ conferme: conferme })
+    })
+      .then(r => r.json())
+      .then(data => {
+        alert(data.messaggio);
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Errore nell'invio dei dati.");
+      });
+  }
+</script>
