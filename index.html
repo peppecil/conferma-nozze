@@ -2,80 +2,89 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Conferma Partecipazione</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; }
-    input, select, button { display: block; width: 100%; margin-bottom: 10px; padding: 10px; }
-    .hidden { display: none; }
+    body { font-family: Arial; background: #f4f4f4; padding: 20px; }
+    input, select, button { display: block; margin: 10px 0; padding: 8px; width: 100%; max-width: 400px; }
+    #gruppoInfo, #confermaForm { display: none; }
   </style>
 </head>
 <body>
-  <h1>Conferma Partecipazione alle Nozze</h1>
 
-  <input id="nome" placeholder="Nome">
-  <input id="cognome" placeholder="Cognome">
-  <button onclick="verifica()">Verifica</button>
+<h1>Conferma Partecipazione</h1>
 
-  <div id="gruppo" class="hidden">
-    <h2>Gruppo Trovato</h2>
-    <ul id="lista"></ul>
-    <div id="scelte"></div>
-    <button onclick="invia()">Invia Conferma</button>
-  </div>
+<input id="nome" placeholder="Nome" required>
+<input id="cognome" placeholder="Cognome" required>
+<button onclick="verifica()">Verifica Partecipazione</button>
 
-  <p id="errore" style="color:red;"></p>
+<div id="errore" style="color: red; display: none;">Partecipante non trovato.</div>
 
-  <script>
-    const URL = 'https://script.google.com/macros/s/AKfycbxGIROEKkkEaepO0Akr5MRFPLYdknTxt6GELo05LVQbCoLMyJGtpYf-VB92-baCs6cQ/exec';
-    let gruppoID = '';
-    let membri = [];
+<div id="gruppoInfo">
+  <h2>Gruppo:</h2>
+  <ul id="listaGruppo"></ul>
+</div>
 
-    function verifica() {
-      const nome = document.getElementById('nome').value.trim();
-      const cognome = document.getElementById('cognome').value.trim();
-      fetch(`${URL}?nome=${nome}&cognome=${cognome}`)
-        .then(r => r.json())
-        .then(data => {
-          if (!data.trovato) {
-            document.getElementById('errore').textContent = "Partecipante non trovato!";
-            return;
-          }
-          document.getElementById('errore').textContent = "";
-          gruppoID = data.gruppoID;
-          membri = data.gruppo;
-          document.getElementById('gruppo').classList.remove('hidden');
-          document.getElementById('lista').innerHTML = membri.map(m => `<li>${m.nome} ${m.cognome}</li>`).join("");
-          const scelteDiv = document.getElementById('scelte');
-          scelteDiv.innerHTML = membri.map((m, i) => `
-            <div>
-              <label><b>${m.nome} ${m.cognome}</b></label>
-              <select id="partecipa${i}">
-                <option value="no">No</option>
-                <option value="si">Sì</option>
-              </select>
-              <input id="preferenze${i}" placeholder="Preferenze alimentari (opzionale)">
-            </div>
-          `).join("");
-        });
-    }
+<div id="confermaForm">
+  <label>Parteciperai?</label>
+  <select id="partecipa">
+    <option value="si">Sì</option>
+    <option value="no">No</option>
+  </select>
+  <input id="preferenze" placeholder="Preferenze alimentari (facoltativo)">
+  <button onclick="invia()">Invia Conferma</button>
+</div>
 
-    function invia() {
-      const conferme = membri.map((m, i) => ({
-        nome: m.nome,
-        cognome: m.cognome,
-        partecipa: document.getElementById(`partecipa${i}`).value === 'si',
-        preferenze: document.getElementById(`preferenze${i}`).value.trim()
-      }));
+<script>
+const url = 'https://script.google.com/macros/s/AKfycbxsZm-FONLTOYGt3ZQ8Dv7mfwv4P41hMqQUcJ3k4hozLGyoqJfnnJlkDDOcOZoxcj44/exec';
+let gruppoID = '';
+let membriGruppo = [];
 
-      fetch(URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gruppoID, conferme })
-      })
-      .then(r => r.json())
-      .then(data => alert(data.messaggio))
-      .catch(() => alert("Errore nell'invio!"));
-    }
-  </script>
+function verifica() {
+  const nome = document.getElementById("nome").value.trim();
+  const cognome = document.getElementById("cognome").value.trim();
+  fetch(`${url}?nome=${encodeURIComponent(nome)}&cognome=${encodeURIComponent(cognome)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.trovato) {
+        document.getElementById("errore").style.display = "block";
+        document.getElementById("gruppoInfo").style.display = "none";
+        document.getElementById("confermaForm").style.display = "none";
+        return;
+      }
+      document.getElementById("errore").style.display = "none";
+      gruppoID = data.gruppo[0].gruppoID;
+      membriGruppo = data.gruppo;
+      const ul = document.getElementById("listaGruppo");
+      ul.innerHTML = '';
+      membriGruppo.forEach(m => {
+        const li = document.createElement("li");
+        li.textContent = `${m.nome} ${m.cognome}`;
+        ul.appendChild(li);
+      });
+      document.getElementById("gruppoInfo").style.display = "block";
+      document.getElementById("confermaForm").style.display = "block";
+    });
+}
+
+function invia() {
+  const partecipazione = document.getElementById("partecipa").value;
+  const preferenze = document.getElementById("preferenze").value;
+  const conferme = membriGruppo.map(m => ({
+    nome: m.nome,
+    cognome: m.cognome,
+    partecipa: partecipazione === "si",
+    preferenze: partecipazione === "si" ? preferenze : ""
+  }));
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ gruppoID, conferme })
+  })
+  .then(r => r.json())
+  .then(data => alert(data.messaggio))
+  .catch(() => alert("Errore nell'invio."));
+}
+</script>
 </body>
 </html>
